@@ -1,0 +1,17 @@
+[Unit]
+Description=chikarika-TV API Server
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/watchroom
+EnvironmentFile=/srv/watchroom/.env
+ExecStart=/usr/bin/pnpm start:server
+Restart=always
+RestartSec=5
+User=watchroom
+Group=watchroom
+
+[Install]
+WantedBy=multi-user.target

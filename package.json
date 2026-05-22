@@ -1,0 +1,25 @@
+{
+  "name": "chikarika-tv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sync movie watching with friends via Emby",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:web": "pnpm --filter @chikarika-tv/web dev",
+    "dev:server": "pnpm --filter @chikarika-tv/server dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @chikarika-tv/web build",
+    "build:server": "pnpm --filter @chikarika-tv/server build",
+    "start:web": "pnpm --filter @chikarika-tv/web start",
+    "start:server": "pnpm --filter @chikarika-tv/server start",
+    "db:migrate": "pnpm --filter @chikarika-tv/server db:migrate",
+    "db:seed": "pnpm --filter @chikarika-tv/server db:seed",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm --filter @chikarika-tv/server test"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

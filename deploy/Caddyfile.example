@@ -1,0 +1,8 @@
+your-domain.example {
+  encode zstd gzip
+
+  @api path /api/* /media/* /ws*
+  reverse_proxy @api 127.0.0.1:2261
+
+  reverse_proxy 127.0.0.1:2262
+}

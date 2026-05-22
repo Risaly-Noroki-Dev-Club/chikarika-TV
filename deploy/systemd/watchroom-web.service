@@ -1,0 +1,18 @@
+[Unit]
+Description=chikarika-TV Web Server
+After=network-online.target watchroom-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/watchroom
+EnvironmentFile=/srv/watchroom/.env
+Environment=PORT=2262
+ExecStart=/usr/bin/pnpm start:web
+Restart=always
+RestartSec=5
+User=watchroom
+Group=watchroom
+
+[Install]
+WantedBy=multi-user.target
