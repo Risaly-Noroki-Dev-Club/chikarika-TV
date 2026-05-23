@@ -123,6 +123,14 @@ sudo -u postgres createdb -O watchroom watchroom
 ./scripts/setup-local-db.sh
 ```
 
+如果只是想快速启动依赖服务，也可以使用仓库里的 Docker Compose：
+
+```bash
+docker compose up -d
+```
+
+当前 `docker-compose.yml` 只包含 PostgreSQL 和 Redis，Web/API 服务仍通过 pnpm 在宿主机运行。
+
 ### 配置
 
 复制并调整环境变量：
@@ -163,6 +171,39 @@ pnpm dev
 pnpm dev:server
 pnpm dev:web
 ```
+
+### 使用流程
+
+本地启动后打开：
+
+```txt
+http://localhost:2262
+```
+
+典型使用路径：
+
+1. 注册一个 chikarika-TV 账号并登录。
+2. 进入 `Emby` 页面，填写 Emby 服务器地址、Emby 用户名和密码。
+3. 绑定成功后进入创建房间页面，从媒体库选择影片。
+4. 创建房间后，把房间链接发给朋友。
+5. 朋友注册/登录后打开邀请链接并加入房间。
+6. 房主开始播放，房间内会同步播放/暂停/跳转状态，并支持实时聊天。
+
+播放链路：
+
+- 房主默认直连自己的 Emby HLS 地址，减少 VPS 流量消耗。
+- 朋友默认通过 chikarika-TV 的 `/media` 代理播放，不会直接拿到房主的 Emby 访问令牌。
+- 代理播放默认限码率 `4 Mbps`，房主可在房间内调整，最高 `6 Mbps`。
+
+### Emby 准备
+
+绑定前需要确认：
+
+- Emby 服务器已启用远程访问，chikarika-TV 后端能访问该地址。
+- 房主浏览器也能访问该 Emby 地址，因为房主播放默认走直连。
+- 使用 Emby 普通账号密码绑定即可，不需要手动创建 API Key。
+- 如果 Emby 部署在反向代理后，推荐直接填写外部可访问地址，例如 `https://emby.example.com`。
+- 为了降低 SSRF 风险，默认不允许绑定 localhost、私有网段或保留地址。
 
 ## 常用命令
 
@@ -250,12 +291,51 @@ ROOTFS=/opt/watchroom-rootfs APP_DIR=/srv/watchroom PORT=2262 ./scripts/run-ruri
 
 第一版通过 `Emby 地址 + 用户名 + 密码` 登录绑定服务器。服务端会保存 Emby 返回的访问令牌，用户不需要在 Emby 后台手动创建 API Key。
 
-注意事项：
+实现细节：
 
-- Emby 地址必须是 chikarika-TV 后端可以访问的公网/内网地址。
-- 为了防 SSRF，默认禁止 localhost 和私有保留地址作为 Emby URL。
-- 房主直连模式下，浏览器也需要能访问房主 Emby 地址。
-- 朋友代理模式下，朋友不直接接触房主 Emby 访问令牌。
+- 绑定时会优先尝试用户填写的地址，也会兼容常见的 `/emby` API base path。
+- Emby 登录后返回的访问令牌会加密保存到数据库。
+- 浏览媒体库、获取影片详情和生成播放地址时，后端使用该访问令牌访问 Emby。
+- HLS 播放地址会带上 Emby `DeviceId` 和播放参数。
+- 房主直连时，浏览器会直接请求房主 Emby 的 HLS 地址。
+- 朋友代理时，浏览器只请求 chikarika-TV 的 `/media` 地址，由后端转发到房主 Emby。
+
+## 常见问题
+
+### 绑定 Emby 失败
+
+可以按顺序检查：
+
+1. Emby 地址是否能从运行 API 服务的机器访问。
+2. Emby 用户名和密码是否正确。
+3. Emby 服务器是否允许远程访问。
+4. 是否填写了内网地址、localhost 或保留地址；这些地址默认会被 SSRF 防护拒绝。
+5. 如果 Emby 挂在反向代理子路径下，可以尝试填写完整外部地址，例如 `https://example.com/emby`。
+
+### 房主能播放，朋友不能播放
+
+通常说明房主直连 Emby 可用，但 VPS 到 Emby 的代理链路不可用。检查：
+
+1. API 服务所在机器能否访问房主 Emby 地址。
+2. 反向代理是否正确转发 `/media/*` 到 API 服务。
+3. Emby 是否要求额外的公网访问配置。
+4. 浏览器开发者工具里 `/media/rooms/...` 请求返回的状态码。
+
+### 房主也不能播放
+
+房主默认直连 Emby。检查：
+
+1. 房主浏览器能否直接打开 Emby 外部地址。
+2. Emby HLS 是否能正常转码或直出。
+3. 影片是否有可用的媒体源。
+4. 绑定的 Emby 用户是否有该媒体库的访问权限。
+
+### 生产环境需要注意什么
+
+- 必须替换 `.env` 里的 `SESSION_SECRET` 和 `ENCRYPTION_KEY`。
+- `ENCRYPTION_KEY` 必须是 32 字节 hex 字符串，也就是 64 个十六进制字符。
+- 数据库密码、Redis 访问策略和反向代理 HTTPS 都应按生产环境配置。
+- 不建议把 PostgreSQL/Redis 放进 ruri rootfs；推荐由宿主机 systemd 管理。
 
 ## 安全边界
 
