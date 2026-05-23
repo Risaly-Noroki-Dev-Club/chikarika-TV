@@ -31,10 +31,15 @@ CREATE TABLE IF NOT EXISTS emby_connections (
   base_url TEXT NOT NULL,
   api_key_encrypted TEXT NOT NULL,
   emby_user_id TEXT,
+  server_id TEXT,
   server_name TEXT,
+  device_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE emby_connections ADD COLUMN IF NOT EXISTS server_id TEXT;
+ALTER TABLE emby_connections ADD COLUMN IF NOT EXISTS device_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_emby_connections_user_id ON emby_connections(user_id);
 

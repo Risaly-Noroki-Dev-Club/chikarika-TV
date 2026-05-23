@@ -12,8 +12,9 @@ export interface EmbyConnection {
   id: string;
   userId: string;
   baseUrl: string;
-  apiKey?: string; // never sent to client
+  accessToken?: string; // never sent to client
   embyUserId?: string;
+  serverId?: string;
   serverName?: string;
   createdAt: Date;
   updatedAt: Date;

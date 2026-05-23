@@ -378,7 +378,7 @@ export async function roomRoutes(app: FastifyInstance) {
     if (isOwner) {
       // Direct: return Emby HLS URL
       const connections = await db`
-        SELECT base_url, api_key_encrypted, emby_user_id
+        SELECT id, base_url, api_key_encrypted, emby_user_id, device_id
         FROM emby_connections WHERE id = ${room.emby_connection_id}
       `;
 
@@ -387,10 +387,12 @@ export async function roomRoutes(app: FastifyInstance) {
       }
 
       const conn = connections[0];
-      const apiKey = decrypt(conn.api_key_encrypted);
+      const accessToken = decrypt(conn.api_key_encrypted);
+      const deviceId = conn.device_id || `watchroom-${conn.id}`;
 
       const params = new URLSearchParams();
-      params.set("api_key", apiKey);
+      params.set("api_key", accessToken);
+      params.set("DeviceId", deviceId);
       params.set("MediaSourceId", room.emby_item_id);
       params.set("PlaySessionId", nanoid(16));
       params.set("VideoCodec", "h264");

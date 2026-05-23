@@ -9,6 +9,7 @@ interface MediaSession {
   embyConnectionId: string;
   embyItemId: string;
   maxBitrate: number;
+  deviceId?: string;
   createdAt: number;
 }
 
@@ -27,17 +28,28 @@ async function validateMediaSession(
 
 async function getEmbyCredentials(connectionId: string) {
   const connections = await db`
-    SELECT base_url, api_key_encrypted, emby_user_id
+    SELECT id, base_url, api_key_encrypted, emby_user_id, device_id
     FROM emby_connections WHERE id = ${connectionId}
   `;
   if (connections.length === 0) return null;
 
   const conn = connections[0];
   return {
+    id: conn.id as string,
     baseUrl: conn.base_url as string,
-    apiKey: decrypt(conn.api_key_encrypted),
+    accessToken: decrypt(conn.api_key_encrypted),
     embyUserId: conn.emby_user_id as string | null,
+    deviceId: (conn.device_id as string | null) || `watchroom-${conn.id}`,
   };
+}
+
+function addEmbyPlaybackParams(
+  params: URLSearchParams,
+  accessToken: string,
+  deviceId: string
+) {
+  params.set("api_key", accessToken);
+  params.set("DeviceId", deviceId);
 }
 
 export async function mediaRoutes(app: FastifyInstance) {
@@ -62,7 +74,7 @@ export async function mediaRoutes(app: FastifyInstance) {
 
     // Build Emby HLS URL with bitrate limit
     const params = new URLSearchParams();
-    params.set("api_key", creds.apiKey);
+    addEmbyPlaybackParams(params, creds.accessToken, mediaSession.deviceId || creds.deviceId);
     params.set("MediaSourceId", mediaSession.embyItemId);
     params.set("VideoCodec", "h264");
     params.set("AudioCodec", "aac");
@@ -131,7 +143,7 @@ export async function mediaRoutes(app: FastifyInstance) {
       if (upstreamUrl.origin !== embyBase.origin) {
         return reply.code(403).send({ error: "Upstream origin mismatch" });
       }
-      upstreamUrl.searchParams.set("api_key", creds.apiKey);
+      addEmbyPlaybackParams(upstreamUrl.searchParams, creds.accessToken, mediaSession.deviceId || creds.deviceId);
     } catch {
       return reply.code(400).send({ error: "Invalid upstream URL" });
     }
@@ -161,7 +173,7 @@ export async function mediaRoutes(app: FastifyInstance) {
 
     const originalUrl = new URL(request.url, "http://localhost");
     originalUrl.searchParams.delete("session");
-    originalUrl.searchParams.set("api_key", creds.apiKey);
+    addEmbyPlaybackParams(originalUrl.searchParams, creds.accessToken, mediaSession.deviceId || creds.deviceId);
 
     const embyUrl = `${creds.baseUrl}/${splat}${originalUrl.search}`;
 
@@ -245,7 +257,11 @@ export async function mediaRoutes(app: FastifyInstance) {
       return reply.code(500).send({ error: "Emby connection unavailable" });
     }
 
-    const embyUrl = `${creds.baseUrl}/${splat}?api_key=${creds.apiKey}`;
+    const params = new URLSearchParams({
+      api_key: creds.accessToken,
+      DeviceId: mediaSession.deviceId || creds.deviceId,
+    });
+    const embyUrl = `${creds.baseUrl}/${splat}?${params.toString()}`;
 
     try {
       const res = await fetch(embyUrl, {

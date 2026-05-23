@@ -6,7 +6,8 @@
 	let isLoading = $state(true);
 	let showAdd = $state(false);
 	let baseUrl = $state('');
-	let apiKey = $state('');
+	let username = $state('');
+	let password = $state('');
 	let addError = $state('');
 	let addLoading = $state(false);
 	let testingId = $state<string | null>(null);
@@ -34,11 +35,12 @@
 		try {
 			await api('/api/emby/connections', {
 				method: 'POST',
-				body: JSON.stringify({ baseUrl: baseUrl.trim(), apiKey: apiKey.trim() }),
+				body: JSON.stringify({ baseUrl: baseUrl.trim(), username: username.trim(), password }),
 			});
 			showAdd = false;
 			baseUrl = '';
-			apiKey = '';
+			username = '';
+			password = '';
 			await loadConnections();
 		} catch (err: any) {
 			addError = err.message;
@@ -97,23 +99,36 @@
 					/>
 				</div>
 				<div>
-					<label for="apiKey" class="wr-label">API Key</label>
+					<label for="username" class="wr-label">Emby 用户名</label>
 					<input
-						id="apiKey"
+						id="username"
+						type="text"
+						class="wr-input"
+						placeholder="输入 Emby 用户名"
+						bind:value={username}
+						autocomplete="username"
+						disabled={addLoading}
+					/>
+				</div>
+				<div>
+					<label for="password" class="wr-label">Emby 密码</label>
+					<input
+						id="password"
 						type="password"
 						class="wr-input"
-						placeholder="Emby API Key"
-						bind:value={apiKey}
+						placeholder="输入 Emby 密码"
+						bind:value={password}
+						autocomplete="current-password"
 						disabled={addLoading}
 					/>
 					<p class="mt-1 text-xs" style="color: var(--wr-text-disabled)">
-						在 Emby 管理面板 → 高级 → API 密钥 中获取
+						无需提供 API Key，将使用账号密码登录 Emby 并保存访问令牌。
 					</p>
 				</div>
 				<button
 					type="submit"
 					class="wr-btn wr-btn-primary"
-					disabled={!baseUrl.trim() || !apiKey.trim() || addLoading}
+					disabled={!baseUrl.trim() || !username.trim() || !password || addLoading}
 				>
 					{#if addLoading}
 						<span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
@@ -137,7 +152,7 @@
 		</div>
 	{:else}
 		<div class="grid gap-3">
-			{#each connections as conn}
+			{#each connections as conn (conn.id)}
 				<div class="wr-card p-4 flex items-center justify-between">
 					<div>
 						<h3 class="font-medium">{conn.serverName || '未命名服务器'}</h3>
