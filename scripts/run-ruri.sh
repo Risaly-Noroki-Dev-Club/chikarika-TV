@@ -22,7 +22,12 @@ if [ ! -d "${APP_DIR}" ]; then
   exit 1
 fi
 
-sudo "${RURI_BIN}" \
+RURI_RUN=("${RURI_BIN}")
+if [ "${EUID}" -ne 0 ]; then
+  RURI_RUN=(sudo "${RURI_BIN}")
+fi
+
+"${RURI_RUN[@]}" \
   -u \
   -n \
   -m "${APP_DIR}" /srv/watchroom \

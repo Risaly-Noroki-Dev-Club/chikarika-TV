@@ -1,0 +1,20 @@
+[Unit]
+Description=chikarika-TV unified Web/API service in ruri
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/watchroom
+EnvironmentFile=/srv/watchroom/.env
+Environment=ROOTFS=/opt/watchroom-rootfs
+Environment=APP_DIR=/srv/watchroom
+Environment=PORT=2262
+ExecStart=/srv/watchroom/scripts/run-ruri-app.sh
+Restart=always
+RestartSec=5
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
